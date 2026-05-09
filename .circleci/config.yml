@@ -50,11 +50,28 @@ jobs:
       - node/install:
           node-version: '16.13'
       - run: node --version
-      - run: npm i -g @railway/cli
+      - run:
+          name: Plan deployment
+          command: |
+            circleci run release plan "${CIRCLE_JOB}" \
+              --environment-name="default" \
+              --component-name="house-prices-api" \
+              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
       - run:
           name: Deploy to Railway App (You must set RAILWAY_TOKEN env var)
           command: |
             cd section-07-ci-and-publishing/house-prices-api && railway up --detach
+      - run:
+          name: Update deployment status to running
+          command: circleci run release update "${CIRCLE_JOB}" --status=RUNNING
+      - run:
+          name: Update deployment status to success
+          command: circleci run release update "${CIRCLE_JOB}" --status=SUCCESS
+          when: on_success
+      - run:
+          name: Update deployment status to failed
+          command: circleci run release update "${CIRCLE_JOB}" --status=FAILED
+          when: on_fail
 
   section_07_test_and_upload_regression_model:
     <<: *defaults
@@ -90,9 +107,27 @@ jobs:
       - run: node --version
       - run: npm i -g @railway/cli
       - run:
+          name: Plan deployment
+          command: |
+            circleci run release plan "${CIRCLE_JOB}" \
+              --environment-name="default" \
+              --component-name="${CIRCLE_PROJECT_REPONAME}" \
+              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
+      - run:
           name: Build and run Dockerfile (see https://docs.railway.app/deploy/dockerfiles)
           command: |
             cd section-08-deploying-with-containers && railway up --detach
+      - run:
+          name: Update deployment status to running
+          command: circleci run release update "${CIRCLE_JOB}" --status=RUNNING
+      - run:
+          name: Update deployment status to success
+          command: circleci run release update "${CIRCLE_JOB}" --status=SUCCESS
+          when: on_success
+      - run:
+          name: Update deployment status to failed
+          command: circleci run release update "${CIRCLE_JOB}" --status=FAILED
+          when: on_fail
 
   test_regression_model_py37:
     docker:
@@ -199,6 +234,13 @@ jobs:
           docker_layer_caching: true
       - run: docker login --username=$HEROKU_EMAIL --password=$HEROKU_API_KEY registry.heroku.com
       - run:
+          name: Plan deployment
+          command: |
+            circleci run release plan "${CIRCLE_JOB}" \
+              --environment-name="default" \
+              --component-name="${CIRCLE_PROJECT_REPONAME}" \
+              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
+      - run: 
           name: Setup Heroku CLI
           command: |
             wget -qO- https://cli-assets.heroku.com/install-ubuntu.sh | sh
@@ -210,6 +252,17 @@ jobs:
           name: Release to Heroku
           command: |
             heroku container:release web --app $HEROKU_APP_NAME
+      - run:
+          name: Update deployment status to running
+          command: circleci run release update "${CIRCLE_JOB}" --status=RUNNING
+      - run:
+          name: Update deployment status to success
+          command: circleci run release update "${CIRCLE_JOB}" --status=SUCCESS
+          when: on_success
+      - run:
+          name: Update deployment status to failed
+          command: circleci run release update "${CIRCLE_JOB}" --status=FAILED
+          when: on_fail
 
   section_12_publish_docker_image_to_aws:
     <<: *defaults
@@ -218,12 +271,30 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
+          name: Plan deployment
+          command: |
+            circleci run release plan "${CIRCLE_JOB}" \
+              --environment-name="default" \
+              --component-name="ml_models" \
+              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
+      - run:
           name: Publishing docker image to aws ECR
           command: |
             sudo pip install awscli
             eval $(aws ecr get-login --no-include-email --region us-east-1)
             make build-ml-api-aws tag-ml-api push-ml-api-aws
             aws ecs update-service --cluster ml-api-cluster --service custom-service --task-definition  first-run-task-definition --force-new-deployment
+      - run:
+          name: Update deployment status to running
+          command: circleci run release update "${CIRCLE_JOB}" --status=RUNNING
+      - run:
+          name: Update deployment status to success
+          command: circleci run release update "${CIRCLE_JOB}" --status=SUCCESS
+          when: on_success
+      - run:
+          name: Update deployment status to failed
+          command: circleci run release update "${CIRCLE_JOB}" --status=FAILED
+          when: on_fail
 
   section_13_train_and_upload_neural_network_model:
     docker:
