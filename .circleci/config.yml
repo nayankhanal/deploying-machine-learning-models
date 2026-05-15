@@ -275,7 +275,7 @@ workflows:
             branches:
               only:
                 - master
-                - demo
+                - nayan
       # upload after git tags are created
       - section_07_test_and_upload_regression_model:
           <<: *tags_only
@@ -285,7 +285,7 @@ workflows:
            branches:
              only:
                - master
-               - demo
+               - nayan
 
 #  test-all:
 #    jobs:
